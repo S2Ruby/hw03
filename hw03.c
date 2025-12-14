@@ -15,13 +15,6 @@
 #define SLEEP 2
 #define DONE 3
 
-#define C_RESET   "\033[0m"
-#define C_BOLD    "\033[1m"
-#define C_CYAN    "\033[36m"
-#define C_YELLOW  "\033[33m"
-#define C_GREEN   "\033[32m"
-#define C_RED     "\033[31m"
-
 struct pcb_struct {
     pid_t pid;
     int state;
@@ -55,7 +48,7 @@ void child_task(int sig);
 int child_burst = 0;
 
 void print_line() {
-    printf("----------------------------------------------------------------------------------\n");
+    printf("------------------------------------------------------------------------\n");
 }
 
 int main() {
@@ -69,8 +62,7 @@ int main() {
 
     printf("\n");
     print_line();
-    printf("  %-10s  %-6s  %-35s  %-20s\n", 
-           "TYPE", "PID", "EVENT", "STATUS/INFO");
+    printf("TYPE\tPID\tEVENT\t\t\tSTATUS/INFO\n");
     print_line();
 
     for (i = 0; i < N_PROCESS; i++) {
@@ -109,8 +101,7 @@ void func_parent() {
     sleep(1);
 
     print_line();
-    printf("  " C_YELLOW "%-10s" C_RESET "  %-6s  " C_YELLOW "%-35s" C_RESET "  Quantum: %d\n", 
-           "KERNEL", "-", "SYSTEM SIMULATION START", time_quantum);
+    printf("KERNEL\t-\tSYSTEM SIMULATION START\tQuantum: %d\n", time_quantum);
     print_line();
 
     alarm(1);
@@ -120,13 +111,11 @@ void func_parent() {
     }
 
     print_line();
-    printf("  " C_YELLOW "%-10s" C_RESET "  %-6s  " C_YELLOW "%-35s" C_RESET "\n", 
-           "KERNEL", "-", "SIMULATION FINISHED");
+    printf("KERNEL\t-\tSIMULATION FINISHED\n");
     print_line();
     
-    printf("  %-8s  %-5s  %-10s  %-12s  %-12s\n", 
-           "RESULT", "PID", "Wait", "Turnaround", "Response");
-    printf("  --------  -----  ----------  ------------  ------------\n");
+    printf("PID\tWait\tTurnaround\tResponse\n");
+    print_line();
 
     double avg_wait = 0;
     double avg_turnaround = 0;
@@ -140,7 +129,7 @@ void func_parent() {
             response = pcb[i].first_cpu_time - pcb[i].arrive_time;
         }
 
-        printf("  RESULT    %5d  %10d  %12d  %12d\n", 
+        printf("%d\t%d\t%d\t\t%d\n", 
             pcb[i].pid, pcb[i].wait_time, turnaround, response);
 
         avg_wait += pcb[i].wait_time;
@@ -152,14 +141,14 @@ void func_parent() {
     double throughput = (double)N_PROCESS / sys_time;
 
     print_line();
-    printf(C_BOLD "  [ System Performance Summary ]" C_RESET "\n");
-    printf("  1. Avg Waiting Time      : %.2f ticks\n", avg_wait / N_PROCESS);
-    printf("  2. Avg Turnaround Time   : %.2f ticks\n", avg_turnaround / N_PROCESS);
-    printf("  3. Avg Response Time     : %.2f ticks\n", avg_response / N_PROCESS);
-    printf("  4. CPU Utilization       : %.2f %% (Busy: %d / Total: %d)\n", 
+    printf("[ System Performance Summary ]\n");
+    printf("1. Avg Waiting Time      : %.2f ticks\n", avg_wait / N_PROCESS);
+    printf("2. Avg Turnaround Time   : %.2f ticks\n", avg_turnaround / N_PROCESS);
+    printf("3. Avg Response Time     : %.2f ticks\n", avg_response / N_PROCESS);
+    printf("4. CPU Utilization       : %.2f %% (Busy: %d / Total: %d)\n", 
            util, sys_time - idle_time, sys_time);
-    printf("  5. Throughput            : %.4f proc/tick\n", throughput);
-    printf("  6. Context Switches      : %d\n", ctx_switch);
+    printf("5. Throughput            : %.4f proc/tick\n", throughput);
+    printf("6. Context Switches      : %d\n", ctx_switch);
     print_line();
 }
 
@@ -172,8 +161,7 @@ void isr_scheduler(int sig) {
             pcb[i].io_time--;
             if (pcb[i].io_time <= 0) {
                 pcb[i].state = READY;
-                printf("  " C_GREEN "%-10s" C_RESET "  %5d   " C_GREEN "%-35s" C_RESET "  Ready Queue\n", 
-                       "KERNEL", pcb[i].pid, "Wake up from I/O");
+                printf("KERNEL\t%d\tWake up from I/O\tReady Queue\n", pcb[i].pid);
             }
         } else if (pcb[i].state == READY) {
             pcb[i].wait_time++;
@@ -186,9 +174,7 @@ void isr_scheduler(int sig) {
 
         if (pcb[current_idx].left_time <= 0) {
             pcb[current_idx].state = READY;
-            printf("  " C_YELLOW "%-10s" C_RESET "  %5d   %-35s  Q Expired -> Ready\n", 
-                   "KERNEL", pcb[current_idx].pid, "Time Quantum Expired");
-            print_line(); 
+            printf("KERNEL\t%d\tTime Quantum Expired\tQ Expired -> Ready\n", pcb[current_idx].pid);
             current_idx = -1;
             ctx_switch++;
         }
@@ -213,8 +199,7 @@ void isr_scheduler(int sig) {
 
     if (reset_flag == 1 && process_count > 0) {
         print_line();
-        printf("  " C_RED "%-10s" C_RESET "  %-6s  " C_RED "%-35s" C_RESET "  Refill Quantums\n", 
-               "KERNEL", "ALL", "*** GLOBAL RESET ***");
+        printf("KERNEL\tALL\tGLOBAL RESET\tRefill Quantums\n");
         print_line();
         for (i = 0; i < N_PROCESS; i++) {
             if (pcb[i].state != DONE) {
@@ -261,9 +246,8 @@ void isr_io(int sig) {
         pcb[current_idx].state = SLEEP;
         pcb[current_idx].io_time = (rand() % 5) + 1;
         
-        printf("  " C_YELLOW "%-10s" C_RESET "  %5d   %-35s  Sleep: %d ticks\n", 
-               "KERNEL", pcb[current_idx].pid, "I/O Requested", pcb[current_idx].io_time);
-        print_line(); 
+        printf("KERNEL\t%d\tI/O Requested\t\tSleep: %d ticks\n", 
+               pcb[current_idx].pid, pcb[current_idx].io_time);
         
         current_idx = -1;
         ctx_switch++;
@@ -286,9 +270,7 @@ void isr_child_exit(int sig) {
                     current_idx = -1;
                     ctx_switch++;
                 }
-                printf("  " C_RED "%-10s" C_RESET "  %5d   " C_RED "%-35s" C_RESET "  State: DONE\n", 
-                       "KERNEL", pid, "Process Terminated");
-                print_line();
+                printf("KERNEL\t%d\tProcess Terminated\tState: DONE\n", pid);
             }
         }
     }
@@ -300,15 +282,7 @@ void func_child(int id) {
 
     child_burst = (rand() % 10) + 1;
     
-    char bar[12];
-    memset(bar, ' ', 10);
-    bar[10] = '\0';
-
-    int k;
-    for(k=0; k<child_burst && k<10; k++) bar[k] = '*';
-
-    printf("  " C_CYAN "%-10s" C_RESET "  %5d   Created (Burst: %-2d)                 [%s]\n", 
-           "CHILD", getpid(), child_burst, bar);
+    printf("CHILD\t%d\tCreated (Burst %d)\n", getpid(), child_burst);
 
     while (1) {
         pause();
@@ -318,21 +292,12 @@ void func_child(int id) {
 void child_task(int sig) {
     if (child_burst <= 0) {
         child_burst = (rand() % 5) + 1;
-        printf("  " C_CYAN "%-10s" C_RESET "  %5d   I/O Done -> New Burst: %-2d\n", 
-               "CHILD", getpid(), child_burst);
+        printf("CHILD\t%d\tI/O Done -> New Burst: %d\n", getpid(), child_burst);
     }
 
     child_burst--;
     
-    char bar[12];
-    memset(bar, ' ', 10);
-    bar[10] = '\0';
-
-    int k;
-    for(k=0; k<child_burst && k<10; k++) bar[k] = '*';
-
-    printf("  " C_CYAN "%-10s" C_RESET "  %5d   " C_CYAN "%-35s" C_RESET "  Burst: [%s]\n", 
-           "CHILD", getpid(), "Running...", bar);
+    printf("CHILD\t%d\tRunning...\t\tBurst: %d\n", getpid(), child_burst);
 
     if (child_burst <= 0) {
         int action = rand() % 2; 
